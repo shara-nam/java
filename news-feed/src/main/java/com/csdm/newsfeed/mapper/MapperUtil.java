@@ -1,50 +1,68 @@
 package com.csdm.newsfeed.mapper;
 
-import org.apache.commons.lang3.StringUtils;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
-import org.mapstruct.Mapper;
+import org.apache.log4j.Logger;
 
-import java.time.LocalDateTime;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 
 /**
  * Includes helper methods which can be used by other mappers
  *
  */
-@Mapper
-public interface MapperUtil {
+public abstract class MapperUtil {
+
+    private MapperUtil() {
+
+    }
+
+    private static final Logger LOGGER = Logger.getLogger(MapperUtil.class);
 
     /**
-     * Maps from {@link DateTime} to {@link String}
+     * Maps from {@link Date} to {@link Timestamp}
      *
-     * @param in {@link DateTime}
-     * @return {@link String}
+     * @param in {@link Date}
+     * @return {@link Timestamp}
      */
-    default String map(final DateTime in) {
+    public static Timestamp map(final Date in) {
         if (in == null) {
             return null;
         }
-        DateTime dateTime = new DateTime();
-        DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
-        String resultWithoutTimezone = formatter.print(dateTime);
+        Timestamp timestamp = new Timestamp(in.getTime());
 
-        return resultWithoutTimezone;
+        return timestamp;
     }
 
     /**
-     * Maps from {@link String} to {@link DateTime}
+     * Maps from {@link String} to {@link Timestamp}
      *
      * @param in {@link String}
-     * @return {@link DateTime}
+     * @return {@link Timestamp}
      */
-    default DateTime map(final String in) {
-        if (StringUtils.isEmpty(in)) {
-            return null;
+    public static Timestamp mapFromString(final String in) {
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
+            Date parsedDate = dateFormat.parse(in);
+            Timestamp timestamp = new java.sql.Timestamp(parsedDate.getTime());
+            return timestamp;
+        } catch(ParseException e) {
+            LOGGER.debug("Date could not be parsed!");
         }
-        DateTime dateTime = new DateTime(in);
 
-        return dateTime;
+        return null;
+    }
+
+    /**
+     * Maps from {@link Timestamp} to {@link String}
+     *
+     * @param in {@link Timestamp}
+     * @return {@link String}
+     */
+    public static String mapFromTimestamp(final Timestamp in) {
+        Date date = new Date(in.getTime());
+
+        return date.toString();
     }
 }

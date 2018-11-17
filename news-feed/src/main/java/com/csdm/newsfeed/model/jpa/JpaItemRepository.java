@@ -8,4 +8,6 @@ import java.util.UUID;
 
 @Repository
 public interface JpaItemRepository extends JpaRepository<ItemDao, UUID> {
+
+    ItemDao findOneById(UUID id);
 }

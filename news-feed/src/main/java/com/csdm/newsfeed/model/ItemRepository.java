@@ -1,22 +1,21 @@
 package com.csdm.newsfeed.model;
 
-import com.csdm.newsfeed.model.dto.ItemDto;
 import com.csdm.newsfeed.mapper.ItemMapper;
 import com.csdm.newsfeed.model.dao.ItemDao;
+import com.csdm.newsfeed.model.dto.ItemDto;
 import com.csdm.newsfeed.model.jpa.JpaItemRepository;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.annotation.ApplicationScope;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Repository class for Item
  */
 @Component
-@ApplicationScope
 public class ItemRepository {
 
     private static final Logger LOG = Logger.getLogger(ItemRepository.class);
@@ -66,21 +65,13 @@ public class ItemRepository {
      */
     public ItemDto findOne(String id) {
 
-        ItemDao itemDao = jpaItemRepository.getOne(UUID.fromString(id));
-        if (itemDao != null) {
+        ItemDao itemDao = jpaItemRepository.findOneById(UUID.fromString(id));
+        if (itemDao!=null) {
             LOG.info("Item found!");
+            return itemMapper.dao2dto(itemDao);
         } else {
             LOG.info("Item not found!");
+            return null;
         }
-        return new ItemDto();
-    }
-
-    public boolean exists(ItemDao requestDao) {
-
-        if (requestDao != null) {
-            if (findOne(requestDao.getId().toString()) != null);
-            return true;
-        }
-        return false;
     }
 }

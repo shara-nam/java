@@ -1,40 +1,33 @@
 package com.csdm.newsfeed.controller;
 
-import com.csdm.newsfeed.client.EntityHandler;
-import com.csdm.newsfeed.model.dto.ItemDto;
-import com.csdm.newsfeed.model.ItemRepository;
-import com.csdm.newsfeed.model.dao.ImageDao;
 import com.csdm.newsfeed.model.dao.ItemDao;
-import com.csdm.newsfeed.util.BeanUtil;
+import com.rometools.rome.feed.synd.SyndEnclosure;
 import com.rometools.rome.feed.synd.SyndEntry;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.Message;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.stereotype.Controller;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.List;
+import java.sql.Timestamp;
 import java.util.UUID;
 
-@RestController
-@RequestMapping("/feed")
 @Slf4j
+@Controller
 public class SyndicationController {
 
     private static final Logger LOG = Logger.getLogger(SyndicationController.class);
 
     @Autowired
-    private ItemRepository itemRepository;
+    private ItemController itemController;
 
-    public void handleMessage(Message<SyndEntry> message) throws Exception {
+    public HttpStatus handleMessage(Message<SyndEntry> message) throws Exception {
         SyndEntry entry = message.getPayload();
         UUID uuid = message.getHeaders().getId();
 
@@ -42,22 +35,22 @@ public class SyndicationController {
         item.setId(uuid);
         item.setTitle(entry.getTitle());
         item.setDescription(entry.getDescription().getValue());
-        item.setPublicationDate(new DateTime(entry.getPublishedDate()));
+        item.setPublicationDate(new Timestamp(entry.getPublishedDate().getTime()));
 
-        ImageDao image = new ImageDao();
-        image.setUrl(entry.getEnclosures().get(0).getUrl());
+        SyndEnclosure image = entry.getEnclosures().get(0);
 
         if(StringUtils.isNotEmpty(image.getUrl())) {
-            image.setId(uuid);
-            image.setImageStream(fetchRemoteFile(image.getUrl()));
-
-            HttpStatus saveImageStatus = BeanUtil.getBean(ImageController.class).saveImage(image);
-            item.setImage(image);
-            item.setUrlByteArray(image.getImageStream());
+            item.setUrlByteArray(fetchRemoteFile(image.getUrl()));
         }
 
-        //if (!itemRepository.exists(item)) {}
-        HttpStatus saveItemStatus = BeanUtil.getBean(ItemController.class).saveItem(item);
+        if (!itemController.exists(item)) {
+            HttpStatus saveItemStatus = itemController.saveItem(item);
+            return saveItemStatus;
+        } else {
+            LOG.debug("Message with UUID " + uuid + " already exists!");
+            return HttpStatus.CONFLICT;
+        }
+
     }
 
     /**
@@ -74,7 +67,7 @@ public class SyndicationController {
             is = url.openStream ();
             bytes = IOUtils.toByteArray(is);
         } catch (IOException e) {
-            LOG.debug("Non meaningful exception handling");
+            LOG.debug("Url to byteArray exception: please add meaningful exception handling " + SyndicationController.class);
         }
         finally {
             if (is != null) is.close();
@@ -82,34 +75,4 @@ public class SyndicationController {
         return bytes;
     }
 
-    @Autowired
-    private EntityHandler entityHandler;
-
-    @GetMapping
-    public ResponseEntity<List<ItemDto>> findAll() {
-        List<ItemDto> items = itemRepository.findAll();
-
-        if (items != null) {
-
-            LOG.info(items.size() + " items were found !");
-
-            // scale by calling different micro services, eg: entityHandler.getEntityById()
-            // this is not a @RestController, but it's a good example for returning a call
-
-            return new ResponseEntity<>(items, HttpStatus.OK);
-        }
-
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<ItemDto> readItem(@PathVariable("id") String id) {
-        ItemDto itemDto = itemRepository.findOne(id);
-
-        if (itemDto != null) {
-            return new ResponseEntity<>(itemDto, HttpStatus.OK);
-        }
-
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
 }

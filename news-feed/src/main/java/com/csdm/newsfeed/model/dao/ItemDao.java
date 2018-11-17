@@ -1,9 +1,10 @@
 package com.csdm.newsfeed.model.dao;
 
 import lombok.Data;
-import org.joda.time.DateTime;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
+import java.sql.Timestamp;
 import java.util.UUID;
 
 @Entity
@@ -17,16 +18,14 @@ public class ItemDao {
     @Column(name = "title")
     private String title;
 
+    @Type(type = "text")
     @Column(name = "description")
     private String description;
 
     @Column(name = "publication_date")
-    private DateTime publicationDate;
+    private Timestamp publicationDate;
 
     @Lob
     @Column(name = "url_byte_array")
     private byte[] urlByteArray;
-
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "item")
-    private ImageDao image;
 }
